@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -64,10 +65,11 @@ func dockerRunArguments() []string {
 	return runArguments
 }
 
-//TODO
-//func locationOptions(uint16)  {
-//
-//}
+func locationOptions(port uint16) map[string]string {
+	return map[string]string{
+		"proxy_pass": "http://" + Config["server_ip"] + ":" + strconv.Itoa(int(port)) + "/$1",
+		"resolver":   Config["nginx_location_resolver"]}
+}
 
 //copies the default config file to tenant's specific config file
 func makeTenantConfig(name string) (err error) {
@@ -93,12 +95,13 @@ func Deploy(name string) (err error) {
 	if err = makePluginsDir(name); err != nil {
 		return
 	}
-	cmd := exec.Command("docker", "run", opts, args)
+	cmd := exec.Command("sh", "-c", "docker run "+opts+" "+args)
 	if err = cmd.Run(); err != nil {
 		return
 	}
-	//location_options = location_options(port)
-	//Nginx::Config.add_location name, location_options
-	//Kernel.system "sudo #{CONF['nginx_bin']} -s reload"
+	locationOpts := locationOptions(port)
+	addLocation(name, locationOpts)
+	nginxReload := exec.Command("sh", "-c", "sudo "+Config["nginx_bin"]+" -s reload")
+	err = nginxReload.Run()
 	return
 }
