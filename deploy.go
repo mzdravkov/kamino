@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -85,8 +84,7 @@ func makePluginsDir(name string) (err error) {
 	return
 }
 
-func Deploy(name string) (err error) {
-	port := findFreePort()
+func Deploy(name string, port uint16) (err error) {
 	opts := strings.Join(dockerRunOptions(name, port), " ")
 	args := strings.Join(dockerRunArguments(), " ")
 	if err = makeTenantConfig(name); err != nil {
