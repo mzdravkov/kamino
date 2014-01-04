@@ -11,6 +11,10 @@ func init() {
 }
 
 func main() {
+	if len(os.Args) == 0 {
+		parseHelp()
+		return
+	}
 	command := os.Args[0]
 	switch command {
 	case "deploy":
