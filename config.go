@@ -2,12 +2,11 @@ package main
 
 import (
 	"github.com/msbranco/goconfig"
+	"path"
+	"path/filepath"
 )
 
-var (
-	rawConfig, _ = goconfig.ReadConfigFile("config.cfg")
-	Config       map[string]string
-)
+var Config map[string]string
 
 func ConfigToMap(conf *goconfig.ConfigFile) (m map[string]string) {
 	m = make(map[string]string)
@@ -21,6 +20,17 @@ func ConfigToMap(conf *goconfig.ConfigFile) (m map[string]string) {
 	return
 }
 
+// convert configs to map[string]string
 func init() {
+	dir, err := filepath.Abs(filepath.Dir(Program))
+	if err != nil {
+		panic("Can't find current directory for file config.go")
+	}
+
+	rawConfig, err := goconfig.ReadConfigFile(path.Join(dir, "config.cfg"))
+	if err != nil {
+		panic("Can't read config file")
+	}
+
 	Config = ConfigToMap(rawConfig)
 }

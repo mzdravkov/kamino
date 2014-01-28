@@ -6,6 +6,9 @@ import (
 	"os"
 )
 
+// get the program name for latter use
+var Program string = os.Args[0]
+
 func init() {
 	os.Args = os.Args[1:]
 }
