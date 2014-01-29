@@ -53,6 +53,14 @@ func dockerRunOptions(name string, port uint16) []string {
 		configVolumeOption,
 		pluginsVolumeOption}
 
+	if memLim := Config["container_memory_limit"]; memLim != "" {
+		options = append(options, "-m "+memLim)
+	}
+
+	if runOpts := Config["docker_run_options"]; runOpts != "" {
+		options = append(options, runOpts)
+	}
+
 	return options
 }
 
