@@ -78,6 +78,12 @@ func locationOptions(port uint16) map[string]string {
 		"resolver":   Config["nginx_location_resolver"]}
 }
 
+func serverOptions(subdomain string) map[string]string {
+	return map[string]string{
+		"listen":      "80",
+		"server_name": subdomain + "." + Config["server_ip"]}
+}
+
 //copies the default config file to tenant's specific config file
 func makeTenantConfig(name string) (err error) {
 	data, err := ioutil.ReadFile(Config["tenants_default_config"])
@@ -105,8 +111,14 @@ func Deploy(name string, port uint16) (err error) {
 	if err = cmd.Run(); err != nil {
 		return
 	}
+
 	locationOpts := locationOptions(port)
-	addLocation(name, locationOpts)
+	if Config["nginx_use_locations"] == "true" {
+		addLocation(name, locationOpts)
+	} else {
+		serverOpts := serverOptions(name)
+		addServer(locationOpts, serverOpts)
+	}
 	nginxReload := exec.Command("sh", "-c", "sudo "+Config["nginx_bin"]+" -s reload")
 	err = nginxReload.Run()
 	return

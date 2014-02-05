@@ -18,6 +18,17 @@ func addLocation(path string, options map[string]string) (err error) {
 	return
 }
 
+func addServer(locationOptions map[string]string, serverOptions map[string]string) (err error) {
+	conf, err := ioutil.ReadFile(Config["nginx_config_file"])
+	if err != nil {
+		return err
+	}
+	regex := regexp.MustCompile("http\\s*{")
+	match := regex.FindIndex(conf)
+	importToConf(conf, match, serverBlock(locationOptions, serverOptions))
+	return
+}
+
 //pass string after the opening curly and you will receive the index of the closing or nil
 func findMatchingCurly(str []byte) int {
 	balance := 1
@@ -61,4 +72,17 @@ func locationBlock(path string, options map[string]string) string {
 	return "\n\t\tlocation ~ ^/" + path + "(/.*|$) {\n\t\t\t" +
 		strings.Join(opts, "\n\t\t\t") +
 		"\n\t\t}\n"
+}
+
+func serverBlock(locationOpts map[string]string, serverOpts map[string]string) string {
+	opts := make([]string, len(serverOpts))
+	i := 0
+	for k, v := range serverOpts {
+		opts[i] = k + " " + v + ";"
+		i++
+	}
+	return "\n\tserver {\n\t\t" +
+		strings.Join(opts, "\n\t\t") +
+		locationBlock("", locationOpts) +
+		"\n\t}\n"
 }
