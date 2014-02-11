@@ -83,6 +83,6 @@ func serverBlock(locationOpts map[string]string, serverOpts map[string]string) s
 	}
 	return "\n\tserver {\n\t\t" +
 		strings.Join(opts, "\n\t\t") +
-		locationBlock("", locationOpts) +
+		locationBlock("*", locationOpts) +
 		"\n\t}\n"
 }
