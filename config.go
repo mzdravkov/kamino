@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/msbranco/goconfig"
+	"os"
 	"path"
 	"path/filepath"
 )
@@ -22,7 +23,7 @@ func ConfigToMap(conf *goconfig.ConfigFile) (m map[string]string) {
 
 // convert configs to map[string]string
 func init() {
-	dir, err := filepath.Abs(filepath.Dir(Program))
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		panic("Can't find current directory for file config.go")
 	}

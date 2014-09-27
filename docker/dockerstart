@@ -1,0 +1,3 @@
+/usr/sbin/sshd -D &
+nginx&
+wrapdocker

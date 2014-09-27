@@ -1,7 +1,9 @@
 package main
 
 import (
+	"github.com/dynport/gossh"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -123,3 +125,28 @@ func Deploy(name string, port uint16) (err error) {
 	err = nginxReload.Run()
 	return
 }
+
+// returns a function of type gossh.Writer func(...interface{})
+// MakeLogger just adds a prefix (DEBUG, INFO, ERROR)
+func MakeLogger(prefix string) gossh.Writer {
+	return func(args ...interface{}) {
+		log.Println((append([]interface{}{prefix}, args...))...)
+	}
+}
+
+//func DeployRemotely(name string, port uint16) (err error) {
+//	client := gossh.New("some.host", "user")
+//	// my default agent authentication is used. use
+//	// client.SetPassword("<secret>")
+//	// for password authentication
+//	client.DebugWriter = MakeLogger("DEBUG")
+//	client.InfoWriter = MakeLogger("INFO ")
+//	client.ErrorWriter = MakeLogger("ERROR")
+//
+//	defer client.Close()
+//	rsp, e := client.Execute("uptime")
+//	if e != nil {
+//		client.ErrorWriter(e.Error())
+//	}
+//	client.InfoWriter(rsp.String())
+//}
