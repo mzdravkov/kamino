@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/codegangsta/cli"
 	"github.com/dynport/gossh"
 	"io/ioutil"
 	"log"
@@ -100,7 +101,22 @@ func makePluginsDir(name string) (err error) {
 	return
 }
 
-func Deploy(name string, port uint16) (err error) {
+func deploy(c *cli.Context) {
+	if c.Args().First() != "" {
+		port := uint16(c.Int("port"))
+		if port == 0 {
+			port = findFreePort()
+		}
+		if err := deployRemotely(c.Args().First(), port); err != nil {
+			log.Fatal(err)
+			return
+		}
+	} else {
+		log.Println("You have to pass a name for the tenant as the first argument to deploy. Use 'kamino help deploy' for more info")
+	}
+}
+
+func deployRemotely(name string, port uint16) (err error) {
 	opts := strings.Join(dockerRunOptions(name, port), " ")
 	args := strings.Join(dockerRunArguments(), " ")
 	if err = makeTenantConfig(name); err != nil {
@@ -128,13 +144,13 @@ func Deploy(name string, port uint16) (err error) {
 
 // returns a function of type gossh.Writer func(...interface{})
 // MakeLogger just adds a prefix (DEBUG, INFO, ERROR)
-func MakeLogger(prefix string) gossh.Writer {
+func makeLogger(prefix string) gossh.Writer {
 	return func(args ...interface{}) {
 		log.Println((append([]interface{}{prefix}, args...))...)
 	}
 }
 
-//func DeployRemotely(name string, port uint16) (err error) {
+//func deployRemotely(name string, port uint16) (err error) {
 //	client := gossh.New("some.host", "user")
 //	// my default agent authentication is used. use
 //	// client.SetPassword("<secret>")
