@@ -13,7 +13,7 @@ func main() {
 	}
 
 	if isItDaemon {
-		println("run server ye")
+		server()
 	} else {
 		App.Run(os.Args)
 	}
