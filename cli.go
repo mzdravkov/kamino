@@ -35,6 +35,7 @@ func init() {
 		},
 	}
 
+	// Default action if no commands are provided
 	App.Action = func(c *cli.Context) {
 		if c.Bool("daemon") {
 			daemonize()

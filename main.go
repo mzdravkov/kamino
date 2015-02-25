@@ -7,8 +7,14 @@ import (
 const version = "0.0.1"
 
 func main() {
-	if err := isItDaemon(); err != nil {
+	isItDaemon, err := isItDaemon()
+	if err != nil {
 		panic(err)
 	}
-	App.Run(os.Args)
+
+	if isItDaemon {
+		println("run server ye")
+	} else {
+		App.Run(os.Args)
+	}
 }

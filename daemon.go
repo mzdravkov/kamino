@@ -14,19 +14,23 @@ const workDir = "./"
 
 var isDaemon bool
 
-func isItDaemon() error {
+func isItDaemon() (bool, error) {
 	pidFile := filepath.Join(workDir, pidFileName)
-	if pid, err := ioutil.ReadFile(pidFile); err == nil {
-		if pid, err := strconv.Atoi(string(pid)); err == nil {
-			if pid == os.Getpid() {
-				println("run server")
-			}
-			return nil
-		} else {
-			return err
-		}
+
+	fileContent, err := ioutil.ReadFile(pidFile)
+	if err != nil {
+		return false, err
 	}
-	return nil
+
+	pid, err := strconv.Atoi(string(fileContent))
+	if err != nil {
+		return false, err
+	}
+
+	if pid == os.Getpid() {
+		return true, nil
+	}
+	return false, nil
 }
 
 func daemonize() {
