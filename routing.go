@@ -1,16 +1,15 @@
 package main
 
 import (
+	"golang.org/x/net/publicsuffix"
 	"log"
 	"net/http"
-	// "io"
-	"strings"
-	"golang.org/x/net/publicsuffix"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
-var tenants = map[string]string {"test": "https://google.com", "baba": "https://fb.com"}
+var tenants = map[string]string{"llama": "http://lvh.me:3000", "baba": "http://fb.com", "ah": "http://youtube.com"}
 
 func handler(w http.ResponseWriter, req *http.Request) {
 	tldPlusOne, err := publicsuffix.EffectiveTLDPlusOne(req.Host)
@@ -22,10 +21,12 @@ func handler(w http.ResponseWriter, req *http.Request) {
 
 	subdomainChainSlice := strings.Split(subdomainChain, ".")
 
+	// if there is no subdomain
 	if len(subdomainChainSlice) < 2 {
 		return
 	}
 
+	// get the top level subdomain
 	subdomain := subdomainChainSlice[len(subdomainChainSlice)-2]
 
 	if subdomain == "www" {
@@ -36,44 +37,28 @@ func handler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	host.Scheme = "http"
 
-	log.Println(strings.Join([]string {subdomain, " subdomain will proxy to ", tenants[subdomain]}, ""))
+	// host without the top level subdomain
+	// (the one which specifies the remote host of the tenant)
+	newHost := tldPlusOne
+	if len(subdomainChainSlice) > 2 {
+		subdomains := strings.Join(subdomainChainSlice, ".")
+		newHost = strings.Join([]string{subdomains, newHost}, ".")
+	}
+	req.Host = newHost
+
+	log.Println(strings.Join([]string{subdomain, " subdomain will proxy to ", tenants[subdomain]}, ""))
 
 	proxy := httputil.NewSingleHostReverseProxy(host)
-	proxy.ServeHTTP(w, req)
 
-	// io.WriteString(w, "llama")
+	proxy.ServeHTTP(w, req)
 }
 
 func server() {
 	http.HandleFunc("/", handler)
-	err := http.ListenAndServe(":3000", nil)
+	err := http.ListenAndServe(":3456", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }
-
-// func startReverseProxy() {
-	
-// }
-
-// func main() {
-// 	remote, err := url.Parse("http://google.com")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	proxy := httputil.NewSingleHostReverseProxy(remote)
-// 	http.HandleFunc("/", handler(proxy))
-// 	err = http.ListenAndServe(":8080", nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// }
-
-// func handler(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		log.Println(r.URL)
-// 		p.ServeHTTP(w, r)
-// 	}
-// }
