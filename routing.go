@@ -26,7 +26,6 @@ func handler(w http.ResponseWriter, req *http.Request) {
 	subdomainChainSlice := strings.Split(subdomainChain, ".")
 	// remove the last element, which is the empty string
 	subdomainChainSlice = subdomainChainSlice[:len(subdomainChainSlice)-1]
-	log.Println(subdomainChainSlice)
 
 	// if there is no subdomain
 	if len(subdomainChainSlice) == 0 {
