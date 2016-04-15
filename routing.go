@@ -1,15 +1,17 @@
 package main
 
 import (
-	"golang.org/x/net/publicsuffix"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+
+	"golang.org/x/net/publicsuffix"
 )
 
-var tenants = map[string]string{"llama": "http://lvh.me:3000", "baba": "http://fb.com", "ah": "http://youtube.com"}
+var tenants = map[string]string{"llama": "lvh.me:3000", "baba": "fb.com", "ah": "youtube.com"}
 
 func handler(w http.ResponseWriter, req *http.Request) {
 	tldPlusOne, err := publicsuffix.EffectiveTLDPlusOne(req.Host)
@@ -17,40 +19,46 @@ func handler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// take everything before the top level domain and the site name
+	// i.e. the chain of the subdomains
 	subdomainChain := strings.Split(req.Host, tldPlusOne)[0]
 
 	subdomainChainSlice := strings.Split(subdomainChain, ".")
+	// remove the last element, which is the empty string
+	subdomainChainSlice = subdomainChainSlice[:len(subdomainChainSlice)-1]
+	log.Println(subdomainChainSlice)
 
 	// if there is no subdomain
-	if len(subdomainChainSlice) < 2 {
+	if len(subdomainChainSlice) == 0 {
 		return
 	}
 
 	// get the top level subdomain
-	subdomain := subdomainChainSlice[len(subdomainChainSlice)-2]
+	subdomain := subdomainChainSlice[len(subdomainChainSlice)-1]
 
-	if subdomain == "www" {
-		return
+	// probably we should ignore www if it's the only subdomain?
+	// if len(subdomainChainSlice) == 1 && subdomain == "www" {
+	// 	return
+	// }
+
+	newHost := tenants[subdomain]
+	if (len(subdomainChainSlice)) > 1 {
+		innerSubdomains := subdomainChainSlice[:len(subdomainChainSlice)-1]
+		newHost = strings.Join(append(innerSubdomains, tenants[subdomain]), ".")
 	}
 
-	host, err := url.Parse(tenants[subdomain])
+	log.Println(fmt.Sprintf("Recieved a request to %s. Redirecting it to %s, based on a rule for the subdomain %s", req.Host, newHost, subdomain))
+
+	newHostUrl, err := url.Parse(newHost)
 	if err != nil {
 		panic(err)
 	}
-	host.Scheme = "http"
+	newHostUrl.Scheme = "http"
 
-	// host without the top level subdomain
-	// (the one which specifies the remote host of the tenant)
-	newHost := tldPlusOne
-	if len(subdomainChainSlice) > 2 {
-		subdomains := strings.Join(subdomainChainSlice, ".")
-		newHost = strings.Join([]string{subdomains, newHost}, ".")
-	}
-	req.Host = newHost
+	proxy := httputil.NewSingleHostReverseProxy(newHostUrl)
 
-	log.Println(strings.Join([]string{subdomain, " subdomain will proxy to ", tenants[subdomain]}, ""))
-
-	proxy := httputil.NewSingleHostReverseProxy(host)
+	newHostUrl.Host = newHost
+	req.URL = newHostUrl
 
 	proxy.ServeHTTP(w, req)
 }
