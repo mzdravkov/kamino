@@ -3,6 +3,8 @@ Kamino
 
 A tool for deploying web applications using [Docker](http://docker.io) and [nginx](http://nginx.org).
 
+*NOTE:* This is the release-0.0.1 branch. This release of kamino is old and mostly for historical reasons.
+
 #About
 
 Kamino is a command line tool, written in [Go language](http://golang.org), for making deployment of many instances of one web application easy. It's small and simple.
