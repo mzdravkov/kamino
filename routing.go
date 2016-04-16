@@ -8,12 +8,14 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/codegangsta/cli"
+
 	"golang.org/x/net/publicsuffix"
 )
 
 var tenants = map[string]string{"llama": "lvh.me:3000", "baba": "fb.com", "ah": "youtube.com"}
 
-func handler(w http.ResponseWriter, req *http.Request) {
+func reverseProxyToKaminoWorker(w http.ResponseWriter, req *http.Request) {
 	tldPlusOne, err := publicsuffix.EffectiveTLDPlusOne(req.Host)
 	if err != nil {
 		return
@@ -62,10 +64,54 @@ func handler(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
-func server() {
-	http.HandleFunc("/", handler)
+func startSageServer() {
+	// the "/" pattern will match all requests
+	http.HandleFunc("/", reverseProxyToKaminoWorker)
+
 	err := http.ListenAndServe(":3456", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
+	}
+}
+
+func reverseProxyToTenantApplication(w http.ResponseWriter, req *http.Request) {
+}
+
+// This is used for reverse proxying requests from a sage node to corresponding tenant
+// and returning the response back to the sage node.
+// There is another server that will handle commands from the sage nodes.
+func startWorkerReverseProxy() {
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/", reverseProxyToTenantApplication)
+
+	server := http.Server{Addr: ":3457", Handler: serveMux}
+
+	server.ListenAndServe()
+}
+
+func handleSageCommands(w http.ResponseWriter, req *http.Request) {
+}
+
+// This is used for recieving commands from the sage nodes.
+// This is NOT for reverse proxying the request between a sage node and a tenant.
+func startWorkerSageListener() {
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/", handleSageCommands)
+
+	server := http.Server{Addr: ":3458", Handler: serveMux}
+
+	server.ListenAndServe()
+}
+
+func startWorkerServers() {
+	go startWorkerReverseProxy()
+	go startWorkerSageListener()
+}
+
+func startServer(c *cli.Context) {
+	if c.Bool("sage") {
+		startSageServer()
+	} else {
+		startWorkerServers()
 	}
 }

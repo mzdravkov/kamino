@@ -1,12 +1,14 @@
 package main
 
 import (
-	"github.com/sevlyar/go-daemon"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/codegangsta/cli"
+	"github.com/sevlyar/go-daemon"
 )
 
 const pidFileName = "kamino.pid"
@@ -33,17 +35,25 @@ func isItDaemon() (bool, error) {
 	return false, nil
 }
 
+// Checks whether the process is already daemonized:
+// If not, daemonizes it.
+// If yes, starts the server
+func daemonizeIfNeeded(c *cli.Context) {
+	isDaemon, err := isItDaemon()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if isDaemon {
+		startServer(c)
+	} else {
+		daemonize()
+	}
+}
+
 func daemonize() {
 	// before starting the child process
 	log.Println("starting kamino as a daemon...")
-
-	// remove the daemon flag so that the daemon doesn't try to daemonize itself
-	args := make([]string, len(os.Args))
-	for _, v := range os.Args {
-		if v != "-d" || v != "--daemon" {
-			args = append(args, v)
-		}
-	}
 
 	context := &daemon.Context{
 		PidFileName: pidFileName,
@@ -52,7 +62,7 @@ func daemonize() {
 		LogFilePerm: 0640,
 		WorkDir:     workDir,
 		Umask:       027,
-		Args:        args,
+		Args:        os.Args,
 	}
 
 	child, err := context.Reborn()

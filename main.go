@@ -4,17 +4,8 @@ import (
 	"os"
 )
 
-const version = "0.0.1"
+const version = "0.0.2"
 
 func main() {
-	isItDaemon, err := isItDaemon()
-	if err != nil {
-		panic(err)
-	}
-
-	if isItDaemon {
-		server()
-	} else {
-		App.Run(os.Args)
-	}
+	App.Run(os.Args)
 }

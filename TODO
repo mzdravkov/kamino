@@ -1,0 +1,2 @@
+- change the routing so that kamino can be deployed on a subdomain
+- probably put the tenant port in the doozer store, so that we can don't enforce all tenants to listen on the same port
