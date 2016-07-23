@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/boltdb/bolt"
 	"github.com/codegangsta/cli"
 
 	"golang.org/x/net/publicsuffix"
@@ -18,6 +19,7 @@ import (
 var tenants = map[string]string{"llama": "lvh.me:3000", "baba": "fb.com", "ah": "youtube.com"}
 
 var consulAddress string
+var db *bolt.DB
 
 func reverseProxyToKaminoWorker(w http.ResponseWriter, req *http.Request) {
 	tldPlusOne, err := publicsuffix.EffectiveTLDPlusOne(req.Host)
@@ -138,9 +140,11 @@ func startWorkerServers(servePort, internalPort int) {
 }
 
 func startServer(context *cli.Context) {
+	db = InitDB("kamino.db")
+	defer db.Close()
+
 	consulAddress = context.String("consul")
 	if context.Bool("sage") {
-		log.Println("ihaa ", 42)
 		go startSageServer(context.Int("kamino-serve-port"))
 	}
 	if context.Bool("worker") {
