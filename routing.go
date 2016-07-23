@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/codegangsta/cli"
@@ -14,6 +16,8 @@ import (
 )
 
 var tenants = map[string]string{"llama": "lvh.me:3000", "baba": "fb.com", "ah": "youtube.com"}
+
+var consulAddress string
 
 func reverseProxyToKaminoWorker(w http.ResponseWriter, req *http.Request) {
 	tldPlusOne, err := publicsuffix.EffectiveTLDPlusOne(req.Host)
@@ -42,7 +46,13 @@ func reverseProxyToKaminoWorker(w http.ResponseWriter, req *http.Request) {
 	// 	return
 	// }
 
-	newHost := tenants[subdomain]
+	_, address, port, err := FindWorkerByTenant(consulAddress, subdomain)
+	if err != nil {
+		log.Println(fmt.Sprintf("ERROR: The node recieved a request for tenant \"%s\", but cannot find a worker that hosts such tenant", subdomain))
+		return
+	}
+
+	newHost := address + ":" + port
 	if (len(subdomainChainSlice)) > 1 {
 		innerSubdomains := subdomainChainSlice[:len(subdomainChainSlice)-1]
 		newHost = strings.Join(append(innerSubdomains, tenants[subdomain]), ".")
@@ -64,11 +74,12 @@ func reverseProxyToKaminoWorker(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
-func startSageServer() {
+func startSageServer(servePort int) {
+	log.Println("Sage node listening on port ", servePort)
 	// the "/" pattern will match all requests
 	http.HandleFunc("/", reverseProxyToKaminoWorker)
 
-	err := http.ListenAndServe(":3456", nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(servePort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -77,41 +88,65 @@ func startSageServer() {
 func reverseProxyToTenantApplication(w http.ResponseWriter, req *http.Request) {
 }
 
-// This is used for reverse proxying requests from a sage node to corresponding tenant
+// This is used for reverse proxying requests from a sage node to a corresponding tenant
 // and returning the response back to the sage node.
 // There is another server that will handle commands from the sage nodes.
-func startWorkerReverseProxy() {
+func startWorkerReverseProxy(servePort int) {
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc("/", reverseProxyToTenantApplication)
 
-	server := http.Server{Addr: ":3457", Handler: serveMux}
+	server := http.Server{Addr: ":" + strconv.Itoa(servePort), Handler: serveMux}
 
 	server.ListenAndServe()
 }
 
-func handleSageCommands(w http.ResponseWriter, req *http.Request) {
+func handlePingFromSage(w http.ResponseWriter, req *http.Request) {
+	type PingResponse struct {
+		Load float64
+	}
+
+	pingResponse := PingResponse{Load: getWorkload()}
+
+	jsonResponse, err := json.Marshal(pingResponse)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := w.Write(jsonResponse); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleDeployCommand(w http.ResponseWriter, req *http.Request) {
 }
 
 // This is used for recieving commands from the sage nodes.
 // This is NOT for reverse proxying the request between a sage node and a tenant.
-func startWorkerSageListener() {
+func startWorkerSageListener(internalPort int) {
 	serveMux := http.NewServeMux()
-	serveMux.HandleFunc("/", handleSageCommands)
+	serveMux.HandleFunc("/ping", handlePingFromSage)
+	serveMux.HandleFunc("/deploy", handleDeployCommand)
 
-	server := http.Server{Addr: ":3458", Handler: serveMux}
+	server := http.Server{Addr: ":" + strconv.Itoa(internalPort), Handler: serveMux}
 
 	server.ListenAndServe()
 }
 
-func startWorkerServers() {
-	go startWorkerReverseProxy()
-	go startWorkerSageListener()
+func startWorkerServers(servePort, internalPort int) {
+	go startWorkerReverseProxy(servePort)
+	go startWorkerSageListener(internalPort)
 }
 
-func startServer(c *cli.Context) {
-	if c.Bool("sage") {
-		startSageServer()
-	} else {
-		startWorkerServers()
+func startServer(context *cli.Context) {
+	consulAddress = context.String("consul")
+	if context.Bool("sage") {
+		log.Println("ihaa ", 42)
+		go startSageServer(context.Int("kamino-serve-port"))
 	}
+	if context.Bool("worker") {
+		go startWorkerServers(context.Int("kamino-serve-port"), context.Int("kamino-internal-port"))
+	}
+
+	// make the main goroutine hang, so that it doesn't terminate
+	select {}
 }

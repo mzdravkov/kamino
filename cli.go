@@ -17,11 +17,30 @@ func init() {
 	App.Commands = []cli.Command{
 		{
 			Name:  "daemon",
-			Usage: "Starts the kamino daemon. By default the daemon will be a worker. Use the --sage flag to make it a sage node (load balancer).",
+			Usage: "Starts the kamino daemon. If no role flag is provided, by default the daemon will be a worker. Use the --sage flag to make it a sage node (router node). Note that a node can be both worker and sage at the same time if both flags are provided.",
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "sage, s",
-					Usage: "Tells the kamino daemon that it's a sage node (load balancer). If this flag is not present, the daemon will be a worker node.",
+					Usage: "Tells the kamino daemon that it's a sage node (router node).",
+				},
+				cli.BoolFlag{
+					Name:  "worker, w",
+					Usage: "Tells the kamino daemon that it's a worker node.",
+				},
+				cli.StringFlag{
+					Name:  "consul, c",
+					Value: "127.0.0.1:8500",
+					Usage: "The address, on which the consul agent is listening for client access.",
+				},
+				cli.IntFlag{
+					Name:  "kamino-serve-port, sp",
+					Value: 3457,
+					Usage: "The port on which the node will take requests for serving a tenant application.",
+				},
+				cli.IntFlag{
+					Name:  "kamino-internal-port, ip",
+					Value: 3458,
+					Usage: "The port on which the node will recieve commands from other nodes.",
 				},
 			},
 			Action: daemonizeIfNeeded,
